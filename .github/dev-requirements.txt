@@ -1,0 +1,13 @@
+# Dependencies used for development
+
+# Install the real dependencies
+-r ../requirements.txt
+black
+isort
+mypy
+
+# Python-based linters and formatters
+pre-commit
+pylint
+yamlfmt
+yamllint
