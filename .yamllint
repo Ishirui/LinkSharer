@@ -8,7 +8,7 @@ rules:
     level: error
   document-start:
     level: error
-  empty-values: enable
+  empty-values: disable   # Sometimes needed in docker-composes
   line-length:
     max: 100
   octal-values:

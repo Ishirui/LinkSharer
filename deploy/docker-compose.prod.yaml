@@ -1,0 +1,12 @@
+---
+services:
+  LinkSharer:
+    container_name: LinkSharer
+    restart: unless-stopped
+    volumes:
+    - type: volume
+      source: linksharer-data
+      target: /app/data
+
+volumes:
+  linksharer-data:

@@ -1,0 +1,6 @@
+---
+services:
+  LinkSharer:
+    image: linksharer:latest
+    ports:
+    - 5353:5353

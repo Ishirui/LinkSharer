@@ -1,0 +1,19 @@
+---
+services:
+  LinkSharer:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        UID: ${UID:-1000}
+    container_name: LinkSharer-dev
+    volumes:
+    - type: bind
+      source: ../src
+      target: /app/src
+    - type: bind
+      source: ../app/data
+      target: /app/data
+    - type: bind
+      source: ../app/config
+      target: /app/config
