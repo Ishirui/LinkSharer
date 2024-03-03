@@ -40,6 +40,7 @@ repos:
   - id: pylint
     additional_dependencies:
     - Flask==3.0.2
+    - sqlalchemy==2.0.27
 
 - repo: https://github.com/pre-commit/mirrors-mypy
   rev: v1.8.0  # Use the sha / tag you want to point at
@@ -47,6 +48,7 @@ repos:
   - id: mypy
     additional_dependencies:
     - Flask==3.0.2
+    - sqlalchemy==2.0.27
 
 # YAML
 - repo: https://github.com/adrienverge/yamllint/
