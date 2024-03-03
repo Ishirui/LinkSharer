@@ -22,5 +22,9 @@ RUN adduser user --uid ${UID} -S
 RUN chown -R user /app
 USER user
 
+# Setup env vars for dockerized app
+ENV LINKSHARER_CONFIG_PATH=/app/config
+ENV LINKSHARER_DATA_PATH=/app/data
+
 # Launch app
 CMD [ "gunicorn", "-b", "0.0.0.0:5353", "src.linksharer:app" ]

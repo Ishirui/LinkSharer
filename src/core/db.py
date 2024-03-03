@@ -4,6 +4,7 @@
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session
 
+from .config import DATA_PATH, DEBUG
 from .share import Base
 
 # Globals
@@ -12,7 +13,7 @@ DB_ENGINE: Engine
 
 # Helper functions
 def init_db():
-    engine = create_engine("sqlite+pysqlite:////app/data/linksharer.db", echo=True)
+    engine = create_engine(f"sqlite+pysqlite:///{DATA_PATH}/linksharer.db", echo=DEBUG)
     Base.metadata.create_all(engine)
 
     global DB_ENGINE  # pylint: disable=global-statement
