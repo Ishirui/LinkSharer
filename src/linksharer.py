@@ -2,14 +2,14 @@
 
 import logging
 from pathlib import Path
-from typing import Dict
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from flask import Flask, Response, abort, request, send_file
 
-app = Flask(__name__)
+from core import Share, get_session, init_db
 
-SHARES: Dict[UUID, Path] = {}
+app = Flask(__name__)
+init_db()
 
 
 def create_share(share_path: Path) -> UUID:
@@ -25,8 +25,14 @@ def create_share(share_path: Path) -> UUID:
             f"Only single-file shares are supported. {share_path!s} is not a file !"
         )
 
-    share_id = uuid4()
-    SHARES[share_id] = share_path.absolute()
+    # TODO: Add methods for setting name and expiry
+    share = Share(_path_str=str(share_path.resolve()), expiry=None, name=None)
+    share_id = share.id
+
+    with get_session() as sess:
+        sess.add(share)
+        sess.commit()
+
     logging.info(
         "Successfully created share '%s', pointing to '%s'",
         share_id,
@@ -45,11 +51,16 @@ def download_endpoint(share_id_str: str) -> Response:
         logging.error("Tried to access invalid UUID '%s' !", share_id_str)
         abort(400)
 
-    try:
-        share_path = SHARES[share_id]
-    except KeyError:
-        logging.error("Requested UUID '%s' not found !", share_id)
-        abort(404)
+    with get_session() as sess:
+        share = sess.get(Share, share_id)
+
+        if share is None:
+            logging.error("Requested UUID '%s' not found !", share_id)
+            abort(404)
+
+        share_path = (
+            share.path
+        )  # Extract this before closing the session and share goes detached
 
     # TODO: SECURITY HOLE ! Need to use send_from_directory and use relative paths instead
     # This could make Flask send system/config files from the docker container
