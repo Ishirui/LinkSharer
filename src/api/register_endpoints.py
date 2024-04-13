@@ -6,7 +6,7 @@ import importlib.util
 import logging
 from inspect import _empty, signature
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Set, TypedDict
 
 from flask import Flask
 
@@ -21,10 +21,16 @@ class InvalidEndpointMethodException(Exception):
         super().__init__(msg)
 
 
+class EndpointDetails(TypedDict):
+    url: str
+    id: str
+    params: Set[str]
+
+
 # Helper functions
-def endpoint_from_path(path: Path) -> str:
+def parse_endpoint_path(path: Path) -> EndpointDetails:
     """
-    Get a slash-separated endpoint URL segment from a file path.
+    Get a slash-separated endpoint URL segment from a file path. Also return some extra parameters.
     Any folders whose names start with an underscore will be considered as parameters.
 
     For example, a file path of 'src/api/share/_share_id/get.py' will yield the following endpoint URL segment:
@@ -37,8 +43,11 @@ def endpoint_from_path(path: Path) -> str:
 
     Returns
     ----------
-    endpoint_url_segment : str
-        URL segment for the endpoint as defined above.
+    endpoint_details : EndpointDetails
+        TypedDict containing:
+            - "url": URL segment for the endpoint as defined above.
+            - "id": Unique endpoint ID for this endpoint
+            - "params": Parameters used in this endpoint
     """
 
     endpoints_dir_path = Path(__file__).parent.joinpath("endpoints")
@@ -57,30 +66,38 @@ def endpoint_from_path(path: Path) -> str:
         )
         api_rel_path = path
 
-    # Convert all parameter-like segments
-    url_segment_parts = (
-        f"<{part[1:]}>" if part.startswith("_") else part for part in api_rel_path.parts
-    )
+    # Construct URL and ID, storing all endpoint parameters along the way
+    endpoint_url_segment = "/api/"
+    endpoint_parameters = set()
+    endpoint_id = ""
 
-    # Need single quotes here for '/' otherwise black adds extra spaces
-    endpoint_url_segment = (
-        f"/api/{'/'.join(url_segment_parts)}"  # pylint: disable=inconsistent-quotes
-    )
+    for part in api_rel_path.parts:
+        if part.startswith("_"):
+            # Handle parameter-like segments
+            part = part[1:]
+            endpoint_url_segment += f"<{part}>/"
+            endpoint_parameters.add(part)
+        else:
+            endpoint_url_segment += f"{part}/"
+
+        endpoint_id += f"{part}_"
+
     logging.info(
-        "Endpoint URL segment '%s' obtained from file '%s'.", endpoint_url_segment, path
+        "Endpoint URL segment '%s' obtained from file '%s'. Detected the following parameters: %s",
+        endpoint_url_segment,
+        path,
+        endpoint_parameters,
     )
-    return endpoint_url_segment
+
+    return EndpointDetails(
+        url=endpoint_url_segment, id=endpoint_id, params=endpoint_parameters
+    )
 
 
-def verify_method_sig(method: Callable, endpoint_url: str) -> None:
+def verify_method_sig(method: Callable, endpoint_params: Set[str]) -> None:
     """Verify that a method's signature is valid for use in the corresponding endpoint"""
 
     sig = signature(method)
-
-    # Get all parameters defined by the endpoint's URL segment (all the <...> parts)
-    endpoint_params = set(
-        part[1:-1] for part in endpoint_url.split("/") if part.startswith("<")
-    )
 
     # Get method's parameters
     method_args = sig.parameters
@@ -117,10 +134,16 @@ def verify_method_sig(method: Callable, endpoint_url: str) -> None:
         )
 
 
-def register_endpoint(app: Flask, method: Callable, endpoint_url: str) -> None:
+def register_endpoint(
+    app: Flask, method: Callable, endpoint_details: EndpointDetails
+) -> None:
     """Register `method` as the function called by the endpoint `endpoint_url`"""
 
-    verify_method_sig(method, endpoint_url)
+    endpoint_url = endpoint_details["url"]
+    endpoint_id = endpoint_details["id"] + method.__name__
+    endpoint_params = endpoint_details["params"]
+
+    verify_method_sig(method, endpoint_params)
 
     # Get allowed methods based on the method name
     match method.__name__:
@@ -137,9 +160,14 @@ def register_endpoint(app: Flask, method: Callable, endpoint_url: str) -> None:
             )
 
     logging.info(
-        "Registering endpoint %s with methods %s.", endpoint_url, allowed_methods
+        "Registering endpoint '%s' with methods %s at URL %s.",
+        endpoint_id,
+        allowed_methods,
+        endpoint_url,
     )
-    app.add_url_rule(endpoint_url, view_func=method, methods=allowed_methods)
+    app.add_url_rule(
+        endpoint_url, view_func=method, endpoint=endpoint_id, methods=allowed_methods
+    )
 
 
 # Main method
@@ -157,7 +185,7 @@ def register_all_endpoints(app: Flask) -> None:
             if file.suffix != ".py":
                 continue
 
-            endpoint_url = endpoint_from_path(file)
+            endpoint_details = parse_endpoint_path(file)
 
             # Dynamically load each endpoint module and extract the endpoint functions
             module_spec = importlib.util.spec_from_file_location(
@@ -177,11 +205,11 @@ def register_all_endpoints(app: Flask) -> None:
                     continue
 
                 try:
-                    register_endpoint(app, endpoint_function, endpoint_url)
+                    register_endpoint(app, endpoint_function, endpoint_details)
                 except InvalidEndpointMethodException as exc:
                     logging.error(
                         "Failed to register endpoint '%s' in file '%s'. Skipping. %s",
-                        endpoint_url,
+                        endpoint_details["id"],
                         file,
                         exc,
                     )
