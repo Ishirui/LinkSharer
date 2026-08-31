@@ -4,7 +4,7 @@ default_language_version:
 
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v4.6.0
+  rev: v6.0.0
   hooks:
   # General
   - id: check-added-large-files
@@ -26,19 +26,19 @@ repos:
   - id: check-builtin-literals
 
 # Python
-- repo: https://github.com/psf/black
-  rev: 24.3.0
+- repo: https://github.com/psf/black-pre-commit-mirror
+  rev: 26.5.1
   hooks:
   - id: black
 
 - repo: https://github.com/PyCQA/isort/
-  rev: 5.13.2
+  rev: 9.0.1
   hooks:
   - id: isort
     args: [--profile, black]
 
 - repo: https://github.com/pylint-dev/pylint/
-  rev: v3.1.0
+  rev: v4.0.8
   hooks:
   - id: pylint
     additional_dependencies:
@@ -46,7 +46,7 @@ repos:
     - sqlalchemy==2.0.27
 
 - repo: https://github.com/pre-commit/mirrors-mypy
-  rev: v1.9.0  # Use the sha / tag you want to point at
+  rev: v2.3.1  # Use the sha / tag you want to point at
   hooks:
   - id: mypy
     additional_dependencies:
@@ -55,7 +55,7 @@ repos:
 
 # YAML
 - repo: https://github.com/adrienverge/yamllint/
-  rev: v1.35.1
+  rev: v1.38.0
   hooks:
   - id: yamllint
 
@@ -70,16 +70,16 @@ repos:
   rev: v0.1.0
   hooks:
   - id: dockerfilelint
-    stages: [commit]
+    stages: [pre-commit]
 
 # Other
 - repo: https://github.com/igorshubovych/markdownlint-cli
-  rev: v0.39.0
+  rev: v0.49.1
   hooks:
   - id: markdownlint
 
 - repo: https://github.com/Mateusz-Grzelinski/actionlint-py
-  rev: v1.6.27.13
+  rev: v1.7.12.24
   hooks:
   - id: actionlint
     additional_dependencies: [pyflakes>=3.0.1, shellcheck-py>=0.9.0.5]
